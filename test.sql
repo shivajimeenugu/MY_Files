@@ -14,3 +14,10 @@ BEGIN
   );
 END;
 /
+
+
+/*
+https://amzn.eu/d/buzFdWg
+https://amzn.eu/d/fnCxfdz
+
+*/
