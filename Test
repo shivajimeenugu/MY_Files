@@ -1,0 +1,51 @@
+To create a new sheet in Excel whenever a new row is added, with the sheet named after the value in the first column of the new row, you can use VBA (Visual Basic for Applications) to automate this task. Here’s how you can achieve this:
+
+1. **Open your Excel workbook**.
+2. **Press `Alt + F11`** to open the VBA editor.
+3. **Insert a new module**:
+   - Right-click on any of the existing modules or on "VBAProject (YourWorkbookName)".
+   - Select `Insert` > `Module`.
+
+4. **Copy and paste the following VBA code into the module**:
+
+    ```vba
+    Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
+        Dim ws As Worksheet
+        Dim newSheetName As String
+        
+        ' Check if the change is in the first column
+        If Not Intersect(Target, Sh.Columns(1)) Is Nothing Then
+            ' Loop through each cell in the target range
+            For Each cell In Target
+                newSheetName = cell.Value
+                ' Check if the sheet name already exists
+                On Error Resume Next
+                Set ws = ThisWorkbook.Sheets(newSheetName)
+                On Error GoTo 0
+                
+                ' If the sheet does not exist, create it
+                If ws Is Nothing Then
+                    ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count)).Name = newSheetName
+                End If
+                Set ws = Nothing
+            Next cell
+        End If
+    End Sub
+    ```
+
+5. **Save the workbook as a macro-enabled workbook**:
+   - Go to `File` > `Save As`.
+   - Choose the `Excel Macro-Enabled Workbook (*.xlsm)` format.
+
+6. **Close the VBA editor** and return to your workbook.
+
+7. **Test the code**:
+   - Add a new row to your worksheet and enter a value in the first column.
+   - A new sheet with the name from the first column should be automatically created.
+
+### Notes:
+- This macro triggers every time a change is made in the workbook. It checks if the change is in the first column and then creates a new sheet if it doesn't already exist.
+- Ensure that the names you enter in the first column are valid sheet names (i.e., they do not contain any invalid characters such as `\ / * [ ] : ?`).
+- You might want to handle potential errors, such as duplicate sheet names, differently depending on your specific requirements. 
+
+Feel free to adapt the code to better suit your needs.
