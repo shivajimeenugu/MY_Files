@@ -1,47 +1,120 @@
-function main(workbook: ExcelScript.Workbook) {
-  // Define the main sheet name
-  const mainSheetName = "MainSheet"; // Replace with the name of your main sheet
-  const monitoredSheetNames = ["Sheet1", "Sheet2"]; // Replace with the names of the sheets you want to monitor
+To delete a corresponding sheet when a row is deleted, we need to modify the code to handle the `Workbook_SheetChange` event for deletions as well. Specifically, the code will need to check if rows are deleted, and if so, remove the corresponding sheets. 
 
-  // Loop through each monitored sheet
-  monitoredSheetNames.forEach(sheetName => {
-    const sheet = workbook.getWorksheet(sheetName);
-    if (sheet) {
-      const range = sheet.getUsedRange();
-      if (range) {
-        const rowCount = range.getRowCount();
-        const columnCount = range.getColumnCount();
+Here's how you can set it up:
 
-        // Loop through each row in the first column
-        for (let row = 0; row < rowCount; row++) {
-          const cell = sheet.getCell(row, 0);
-          const newSheetName = cell.getText();
+1. **Open your Excel workbook**.
+2. **Press `Alt + F11`** to open the VBA editor.
+3. **Find the `ThisWorkbook` module**:
+   - In the VBA editor, locate `ThisWorkbook` under the `VBAProject (YourWorkbookName)` in the Project Explorer on the left.
+   - Double-click `ThisWorkbook` to open its code window.
 
-          if (newSheetName && !workbook.getWorksheet(newSheetName)) {
-            // Create a new sheet
-            const newSheet = workbook.addWorksheet(newSheetName);
+4. **Copy and paste the following VBA code into the `ThisWorkbook` code window**:
 
-            // Insert a hyperlink in the cell to the new sheet
-            cell.getHyperlink().set({
-              textToDisplay: newSheetName,
-              location: `${newSheetName}!A1`
-            });
+    ```vba
+    Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
+        Dim ws As Worksheet
+        Dim newSheetName As String
+        Dim monitoredSheets As Variant
+        Dim sheetName As Variant
+        Dim mainSheetName As String
+        Dim backShape As Shape
+        Dim cell As Range
 
-            // Create a back button shape in the new sheet
-            const backShape = newSheet.addShape(
-              ExcelScript.ShapeType.actionButtonBackPrevious,
-              10, 10, 50, 50
-            );
-            backShape.getText().setText("Back");
+        ' Define the main sheet name
+        mainSheetName = "MainSheet" ' Replace with the name of your main sheet
+        
+        ' List of sheet names to monitor
+        monitoredSheets = Array("Sheet1", "Sheet2") ' Replace with the names of the sheets you want to monitor
 
-            // Add a hyperlink to the main sheet
-            backShape.getHyperlink().set({
-              textToDisplay: "Back",
-              location: `${mainSheetName}!A1`
-            });
-          }
-        }
-      }
-    }
-  });
-}
+        ' Check if the change is in a monitored sheet
+        For Each sheetName In monitoredSheets
+            If Sh.Name = sheetName Then
+                ' Handle additions or changes in the first column
+                If Not Intersect(Target, Sh.Columns(1)) Is Nothing Then
+                    For Each cell In Target
+                        If Len(cell.Value) > 0 Then
+                            newSheetName = cell.Value
+                            ' Check if the sheet name already exists
+                            On Error Resume Next
+                            Set ws = ThisWorkbook.Sheets(newSheetName)
+                            On Error GoTo 0
+
+                            ' If the sheet does not exist, create it
+                            If ws Is Nothing Then
+                                Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
+                                ws.Name = newSheetName
+
+                                ' Create a back icon shape in the new sheet
+                                Set backShape = ws.Shapes.AddShape(msoShapeLeftArrow, 10, 10, 50, 50)
+                                backShape.TextFrame.Characters.Text = "Back"
+
+                                ' Add a hyperlink to the main sheet
+                                ws.Hyperlinks.Add Anchor:=backShape, Address:="", SubAddress:="'" & mainSheetName & "'!A1", TextToDisplay:="Back"
+                            End If
+
+                            ' Insert a hyperlink in the cell to the new sheet
+                            Sh.Hyperlinks.Add Anchor:=cell, Address:="", SubAddress:="'" & newSheetName & "'!A1", TextToDisplay:=newSheetName
+
+                            Set ws = Nothing
+                        End If
+                    Next cell
+                End If
+            End If
+        Next sheetName
+    End Sub
+
+    Private Sub Workbook_SheetBeforeDelete(ByVal Sh As Object)
+        Dim ws As Worksheet
+        Dim monitoredSheets As Variant
+        Dim sheetName As Variant
+        Dim cell As Range
+        Dim targetSheetName As String
+        
+        ' List of sheet names to monitor
+        monitoredSheets = Array("Sheet1", "Sheet2") ' Replace with the names of the sheets you want to monitor
+
+        ' Check if the sheet being deleted is a monitored sheet
+        For Each sheetName In monitoredSheets
+            If Sh.Name = sheetName Then
+                ' Iterate over each cell in the first column of the monitored sheet
+                For Each cell In Sh.Columns(1).Cells
+                    If Len(cell.Value) > 0 Then
+                        targetSheetName = cell.Value
+                        ' Check if the sheet name exists and delete it
+                        On Error Resume Next
+                        Set ws = ThisWorkbook.Sheets(targetSheetName)
+                        On Error GoTo 0
+
+                        If Not ws Is Nothing Then
+                            Application.DisplayAlerts = False
+                            ws.Delete
+                            Application.DisplayAlerts = True
+                        End If
+
+                        Set ws = Nothing
+                    End If
+                Next cell
+            End If
+        Next sheetName
+    End Sub
+    ```
+
+5. **Close the VBA editor** and return to your workbook.
+6. **Save the workbook** as a macro-enabled workbook (`*.xlsm`).
+
+### Explanation:
+- **Workbook_SheetChange Event**: Handles creating new sheets and adding hyperlinks when a new row is added or modified in monitored sheets.
+- **Workbook_SheetBeforeDelete Event**: Handles deleting the corresponding sheet when a row is deleted from the monitored sheets.
+- **Application.DisplayAlerts**: Prevents Excel from showing confirmation prompts when deleting sheets.
+
+### How to Test:
+1. Open one of the sheets listed in the `monitoredSheets` array (e.g., "Sheet1" or "Sheet2").
+2. Add a new row and enter a value in the first column (Column A). A new sheet should be created with that name, and a hyperlink should be added to the cell.
+3. Delete the row you added. The corresponding sheet should be deleted automatically.
+
+### Important Notes:
+- Replace `mainSheetName` with the actual name of your main sheet.
+- Ensure that the names you enter in the first column are valid sheet names (i.e., they do not contain any invalid characters such as `\ / * [ ] : ?`).
+- Macros must be enabled for this to work. When you open the workbook, make sure to enable macros if prompted.
+
+This code ensures that a new sheet is created and linked via a hyperlink when a new value is entered in the first column of monitored sheets. It also deletes the corresponding sheet when the row is deleted.
