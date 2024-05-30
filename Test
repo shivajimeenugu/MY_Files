@@ -3,6 +3,11 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
     Dim newSheetName As String
     Dim monitoredSheets As Variant
     Dim sheetName As Variant
+    Dim mainSheetName As String
+    Dim backShape As Shape
+    
+    ' Define the main sheet name
+    mainSheetName = "MainSheet" ' Replace with the name of your main sheet
     
     ' List of sheet names to monitor
     monitoredSheets = Array("Sheet1", "Sheet2") ' Replace with the names of the sheets you want to monitor
@@ -24,6 +29,13 @@ Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
                     If ws Is Nothing Then
                         Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
                         ws.Name = newSheetName
+                        
+                        ' Create a back icon shape in the new sheet
+                        Set backShape = ws.Shapes.AddShape(msoShapeLeftArrow, 10, 10, 50, 50)
+                        backShape.TextFrame.Characters.Text = "Back"
+                        
+                        ' Add a hyperlink to the main sheet
+                        ws.Hyperlinks.Add Anchor:=backShape, Address:="", SubAddress:="'" & mainSheetName & "'!A1", TextToDisplay:="Back"
                     End If
                     
                     ' Insert a hyperlink in the cell to the new sheet
