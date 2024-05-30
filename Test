@@ -1,49 +1,47 @@
-Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
-    Dim ws As Worksheet
-    Dim newSheetName As String
-    Dim monitoredSheets As Variant
-    Dim sheetName As Variant
-    Dim mainSheetName As String
-    Dim backShape As Shape
-    
-    ' Define the main sheet name
-    mainSheetName = "MainSheet" ' Replace with the name of your main sheet
-    
-    ' List of sheet names to monitor
-    monitoredSheets = Array("Sheet1", "Sheet2") ' Replace with the names of the sheets you want to monitor
-    
-    ' Check if the change is in a monitored sheet
-    For Each sheetName In monitoredSheets
-        If Sh.Name = sheetName Then
-            ' Check if the change is in the first column
-            If Not Intersect(Target, Sh.Columns(1)) Is Nothing Then
-                ' Loop through each cell in the target range
-                For Each cell In Target
-                    newSheetName = cell.Value
-                    ' Check if the sheet name already exists
-                    On Error Resume Next
-                    Set ws = ThisWorkbook.Sheets(newSheetName)
-                    On Error GoTo 0
-                    
-                    ' If the sheet does not exist, create it
-                    If ws Is Nothing Then
-                        Set ws = ThisWorkbook.Sheets.Add(After:=ThisWorkbook.Sheets(ThisWorkbook.Sheets.Count))
-                        ws.Name = newSheetName
-                        
-                        ' Create a back icon shape in the new sheet
-                        Set backShape = ws.Shapes.AddShape(msoShapeLeftArrow, 10, 10, 50, 50)
-                        backShape.TextFrame.Characters.Text = "Back"
-                        
-                        ' Add a hyperlink to the main sheet
-                        ws.Hyperlinks.Add Anchor:=backShape, Address:="", SubAddress:="'" & mainSheetName & "'!A1", TextToDisplay:="Back"
-                    End If
-                    
-                    ' Insert a hyperlink in the cell to the new sheet
-                    Sh.Hyperlinks.Add Anchor:=cell, Address:="", SubAddress:="'" & newSheetName & "'!A1", TextToDisplay:=newSheetName
-                    
-                    Set ws = Nothing
-                Next cell
-            End If
-        End If
-    Next sheetName
-End Sub
+function main(workbook: ExcelScript.Workbook) {
+  // Define the main sheet name
+  const mainSheetName = "MainSheet"; // Replace with the name of your main sheet
+  const monitoredSheetNames = ["Sheet1", "Sheet2"]; // Replace with the names of the sheets you want to monitor
+
+  // Loop through each monitored sheet
+  monitoredSheetNames.forEach(sheetName => {
+    const sheet = workbook.getWorksheet(sheetName);
+    if (sheet) {
+      const range = sheet.getUsedRange();
+      if (range) {
+        const rowCount = range.getRowCount();
+        const columnCount = range.getColumnCount();
+
+        // Loop through each row in the first column
+        for (let row = 0; row < rowCount; row++) {
+          const cell = sheet.getCell(row, 0);
+          const newSheetName = cell.getText();
+
+          if (newSheetName && !workbook.getWorksheet(newSheetName)) {
+            // Create a new sheet
+            const newSheet = workbook.addWorksheet(newSheetName);
+
+            // Insert a hyperlink in the cell to the new sheet
+            cell.getHyperlink().set({
+              textToDisplay: newSheetName,
+              location: `${newSheetName}!A1`
+            });
+
+            // Create a back button shape in the new sheet
+            const backShape = newSheet.addShape(
+              ExcelScript.ShapeType.actionButtonBackPrevious,
+              10, 10, 50, 50
+            );
+            backShape.getText().setText("Back");
+
+            // Add a hyperlink to the main sheet
+            backShape.getHyperlink().set({
+              textToDisplay: "Back",
+              location: `${mainSheetName}!A1`
+            });
+          }
+        }
+      }
+    }
+  });
+}
