@@ -1,57 +1,43 @@
-function onSheetChange(workbook: ExcelScript.Workbook, args: ExcelScript.ChangeEventArgs) {
-  // Define the main sheet name
-  const mainSheetName = "MainSheet";
+import os
+import csv
 
-  // List of sheet names to monitor
-  const monitoredSheets = ["Sheet1", "Sheet2"];
+def split_csv(file_path, max_size_mb=2):
+    # Convert max size to bytes
+    max_size_bytes = max_size_mb * 1024 * 1024
+    
+    # Open the input CSV file
+    with open(file_path, 'r', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        header = next(reader)  # Read the header row
+        
+        file_count = 1
+        current_size = 0
+        output_file = open(f'output_part_{file_count}.csv', 'w', newline='')
+        writer = csv.writer(output_file)
+        writer.writerow(header)
+        
+        for row in reader:
+            # Calculate the size of the current row
+            row_size = sum(len(str(cell)) for cell in row) + len(row) - 1  # Account for commas
+            # Add header size if it's the first row in the file
+            if current_size == 0:
+                row_size += sum(len(str(cell)) for cell in header) + len(header) - 1
+                
+            if current_size + row_size > max_size_bytes:
+                # Close the current file and open a new one
+                output_file.close()
+                file_count += 1
+                current_size = 0
+                output_file = open(f'output_part_{file_count}.csv', 'w', newline='')
+                writer = csv.writer(output_file)
+                writer.writerow(header)
+            
+            # Write the row to the current file and update the current size
+            writer.writerow(row)
+            current_size += row_size
+        
+        # Close the last output file
+        output_file.close()
 
-  // Check if the change is in a monitored sheet
-  if (monitoredSheets.indexOf(args.sheet.getName()) !== -1) {
-    // Handle additions or changes in the first column
-    if (args.changeType === ExcelScript.ChangeType.CellEdit && args.range.column === 1) {
-      for (const cell of args.range.values) {
-        if (cell.length > 0) {
-          const newSheetName = cell;
-
-          // Check if the sheet name already exists
-          const existingSheet = workbook.getWorksheets().find(sheet => sheet.getName() === newSheetName);
-
-          // If the sheet does not exist, create it
-          if (!existingSheet) {
-            const newSheet = workbook.getWorksheets().addAfter(workbook.getWorksheets().getActive());
-            newSheet.setName(newSheetName);
-
-            // Create a back icon with hyperlink to main sheet
-            const backShape = newSheet.addShape(ExcelScript.ShapeType.LeftArrow, 10, 10, 50, 50);
-            backShape.getTextFrame().setText("Back");
-            newSheet.addHyperlink(backShape, "", `'${mainSheetName}'!A1`, "Back");
-          }
-
-          // Add a hyperlink in the cell to the new sheet
-          cell.addHyperlink("", `'${newSheetName}'!A1`, newSheetName);
-        }
-      }
-    }
-  }
-}
-
-function onSheetBeforeDelete(workbook: ExcelScript.Workbook, sheet: ExcelScript.Worksheet) {
-  // List of sheet names to monitor
-  const monitoredSheets = ["Sheet1", "Sheet2"];
-
-  // Check if the sheet being deleted is a monitored sheet
-  if (monitoredSheets.indexOf(sheet.getName()) !== -1) {
-    // Iterate over each cell in the first column
-    for (const cell of sheet.getRange("A:A").getValues()) {
-      if (cell.length > 0) {
-        const targetSheetName = cell;
-
-        // Check if the sheet name exists and delete it
-        const targetSheet = workbook.getWorksheets().find(sheet => sheet.getName() === targetSheetName);
-        if (targetSheet) {
-          workbook.getSheets().delete(targetSheet);
-        }
-      }
-    }
-  }
-}
+# Usage
+split_csv('large_file.csv')
