@@ -1,43 +1,30 @@
-import os
-import csv
+package main
 
-def split_csv(file_path, max_size_mb=2):
-    # Convert max size to bytes
-    max_size_bytes = max_size_mb * 1024 * 1024
-    
-    # Open the input CSV file
-    with open(file_path, 'r', newline='') as csvfile:
-        reader = csv.reader(csvfile)
-        header = next(reader)  # Read the header row
-        
-        file_count = 1
-        current_size = 0
-        output_file = open(f'output_part_{file_count}.csv', 'w', newline='')
-        writer = csv.writer(output_file)
-        writer.writerow(header)
-        
-        for row in reader:
-            # Calculate the size of the current row
-            row_size = sum(len(str(cell)) for cell in row) + len(row) - 1  # Account for commas
-            # Add header size if it's the first row in the file
-            if current_size == 0:
-                row_size += sum(len(str(cell)) for cell in header) + len(header) - 1
-                
-            if current_size + row_size > max_size_bytes:
-                # Close the current file and open a new one
-                output_file.close()
-                file_count += 1
-                current_size = 0
-                output_file = open(f'output_part_{file_count}.csv', 'w', newline='')
-                writer = csv.writer(output_file)
-                writer.writerow(header)
-            
-            # Write the row to the current file and update the current size
-            writer.writerow(row)
-            current_size += row_size
-        
-        # Close the last output file
-        output_file.close()
+import (
+	"fmt"
+	"net/http"
+	"net/url"
+)
 
-# Usage
-split_csv('large_file.csv')
+func main() {
+	proxyURL, err := url.Parse("http://your-proxy-address:port")
+	if err != nil {
+		panic(err)
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(proxyURL),
+	}
+
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	resp, err := client.Get("https://www.example.com")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("Response Status:", resp.Status)
+}
