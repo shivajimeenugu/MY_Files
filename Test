@@ -1,30 +1,15 @@
-package main
+import json
 
-import (
-	"fmt"
-	"net/http"
-	"net/url"
-)
-
-func main() {
-	proxyURL, err := url.Parse("http://your-proxy-address:port")
-	if err != nil {
-		panic(err)
-	}
-
-	transport := &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
-	}
-
-	client := &http.Client{
-		Transport: transport,
-	}
-
-	resp, err := client.Get("https://www.example.com")
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	fmt.Println("Response Status:", resp.Status)
+# Assuming the JSON data is stored in a variable called `data`
+data = {
+    "@type": "QueryResult",
+    "result": [
+        # Add the JSON data here...
+    ],
+    "numberOfResults": 14
 }
+
+# Retrieve all componentIds using a list comprehension
+component_ids = [component["componentId"] for component in data["result"] if "componentId" in component]
+
+print(component_ids)
