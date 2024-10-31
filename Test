@@ -1,15 +1,46 @@
-import json
+import networkx as nx
 
-# Assuming the JSON data is stored in a variable called `data`
-data = {
-    "@type": "QueryResult",
-    "result": [
-        # Add the JSON data here...
-    ],
-    "numberOfResults": 14
-}
+def build_dependency_graph(component_references):
+    """
+    Builds a dependency graph from a list of component references.
 
-# Retrieve all componentIds using a list comprehension
-component_ids = [component["componentId"] for component in data["result"] if "componentId" in component]
+    Args:
+        component_references: A list of component reference objects.
 
-print(component_ids)
+    Returns:
+        A networkx DiGraph object representing the dependency graph.
+    """
+
+    G = nx.DiGraph()
+    for reference in component_references:
+        parent_id = reference['parentComponentId']
+        child_id = reference['componentId']
+        G.add_edge(child_id, parent_id)
+    return G
+
+def copy_components(dependency_graph, target_account):
+    """
+    Copies components in the correct order based on dependencies.
+
+    Args:
+        dependency_graph: A networkx DiGraph object representing the dependency graph.
+        target_account: The target Boomi account.
+    """
+
+    sorted_components = list(nx.topological_sort(dependency_graph))
+
+    for component_id in sorted_components:
+        # Fetch the component details using the component ID
+        component_details = get_component_details(component_id)
+
+        # Create the component in the target account
+        create_component(target_account, component_details)
+
+# Example usage:
+component_references = [
+    {"parentComponentId": "a3f14de7-bb3a-4013-bb64-09725fe450ab", "parentVersion": 3, "componentId": "1d3f3c08-5abe-433f-87bd-cb46a2d53f5e", "type": "DEPENDENT"},
+    {"parentComponentId": "caf123b5-d7fe-4619-b7fd-c11d79cec176", "parentVersion": 1, "componentId": "1d3f3c08-5abe-433f-87bd-cb46a2d53f5e", "type": "DEPENDENT"}
+]
+
+dependency_graph = build_dependency_graph(component_references)
+copy_components(dependency_graph, target_account)
